@@ -58,6 +58,7 @@ func main() {
 
 	total_size, _ := strconv.Atoi(header["Content-Length"][0]) // Get the content length.
 	partial_size := int(total_size / worker_count)
+	fmt.Println("Total size:", total_size)
 
 	var worker = Worker{
 		Url:       download_url,
@@ -65,9 +66,6 @@ func main() {
 		Count:     worker_count,
 		TotalSize: total_size,
 	}
-
-	fmt.Println("Total size:", worker.TotalSize)
-	fmt.Println("Downloading ..., please wait.")
 
 	// Progress bar
 	worker.Progress.Bars, _ = multibar.New()
@@ -104,7 +102,7 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 	defer body.Close()
 
 	percent_flag := map[int]bool{}
-	buf := make([]byte, 100*1024) // make a buffer to keep chunks that are read
+	buf := make([]byte, 32*1024) // make a buffer to keep chunks that are read
 	for {
 		nr, er := body.Read(buf)
 		if nr > 0 {
