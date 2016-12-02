@@ -17,12 +17,17 @@ import (
 )
 
 type Worker struct {
-	Url          string
-	File         *os.File
-	Count        int
-	SyncWG       sync.WaitGroup
-	TotalSize    int
-	ProgressBars map[int]multibar.ProgressFunc
+	Url       string
+	File      *os.File
+	Count     int
+	SyncWG    sync.WaitGroup
+	TotalSize int
+	Progress
+}
+
+type Progress struct {
+	Bars   *multibar.BarContainer
+	Update map[int]multibar.ProgressFunc
 }
 
 func main() {
@@ -64,13 +69,14 @@ func main() {
 	fmt.Println("Total size:", worker.TotalSize)
 	fmt.Println("Downloading ..., please wait.")
 
-	// Show progress bar
-	progressBars, _ := multibar.New()
-	worker.ProgressBars = make(map[int]multibar.ProgressFunc)
+	// Progress bar
+	worker.Progress.Bars, _ = multibar.New()
+	worker.Progress.Update = make(map[int]multibar.ProgressFunc)
 
 	var start, end int
 	for num := 1; num <= worker.Count; num++ {
-		worker.ProgressBars[num] = progressBars.MakeBar(100, fmt.Sprintf("Part %d", num))
+		// Print progress bar
+		worker.Progress.Update[num] = worker.Progress.Bars.MakeBar(100, fmt.Sprintf("Part %d", num))
 
 		if num == worker.Count {
 			end = total_size // last part
@@ -82,7 +88,7 @@ func main() {
 		go worker.writeRange(num, start, end-1)
 		start = end
 	}
-	go progressBars.Listen()
+	go worker.Progress.Bars.Listen()
 	worker.SyncWG.Wait()
 	time.Sleep(300 * time.Millisecond) // Wait for progress bar UI to be done.
 	fmt.Println("Done!")
@@ -97,8 +103,8 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 	}
 	defer body.Close()
 
-	percent_flag := map[int]bool{} // Prevent reporting repeatedly.
-	buf := make([]byte, 2*1024)    // make a buffer to keep chunks that are read
+	percent_flag := map[int]bool{}
+	buf := make([]byte, 100*1024) // make a buffer to keep chunks that are read
 	for {
 		nr, er := body.Read(buf)
 		if nr > 0 {
@@ -115,13 +121,12 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 				written += nw
 			}
 
-			p := int(float32(written) / float32(size) * 100)
-
 			// Report progress and only report once time by every 1%.
+			p := int(float32(written) / float32(size) * 100)
 			_, flagged := percent_flag[p]
-			if p%1 == 0 && !flagged {
+			if !flagged {
 				percent_flag[p] = true
-				w.ProgressBars[part_num](p)
+				w.Progress.Update[part_num](p)
 			}
 		}
 		if er != nil {
@@ -133,7 +138,7 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 				}
 				break
 			}
-			log.Fatal("Part %d occured error: %s", part_num, er.Error())
+			log.Fatalf("Part %d occured error: %s\n", part_num, er.Error())
 		}
 	}
 }
