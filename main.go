@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -34,21 +33,14 @@ func main() {
 	// e.g. http://ipv4.download.thinkbroadband.com/20MB.zip
 	// e.g. http://ipv4.download.thinkbroadband.com/50MB.zip
 	if len(os.Args) == 1 {
-		log.Fatal("Please pass url.")
+		log.Fatal("Please pass url via argument.")
 	}
 	download_url := os.Args[1]
 	worker_count := 5 // Goroutine number
 
 	// Get header
-	res, _ := http.Head(download_url)
-	header := res.Header
-
-	accept_ranges, supported := header["Accept-Ranges"]
-	if !supported {
-		log.Fatal("Doesn't support `Accept-Ranges`.")
-	} else if accept_ranges[0] != "bytes" {
-		log.Fatal("Support `Accept-Ranges`, but not equal to `bytes`.")
-	}
+	total_size := getSizeAndCheckRangeSupport(download_url)
+	fmt.Println("Total size:", total_size)
 
 	f, err := os.OpenFile(getFileName(download_url), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
@@ -56,10 +48,7 @@ func main() {
 	}
 	defer f.Close()
 
-	total_size, _ := strconv.Atoi(header["Content-Length"][0]) // Get the content length.
-	partial_size := int(total_size / worker_count)
-	fmt.Println("Total size:", total_size)
-
+	// New worker struct for downloading file
 	var worker = Worker{
 		Url:       download_url,
 		File:      f,
@@ -72,6 +61,8 @@ func main() {
 	worker.Progress.Update = make(map[int]multibar.ProgressFunc)
 
 	var start, end int
+	var partial_size = int(total_size / worker_count)
+
 	for num := 1; num <= worker.Count; num++ {
 		// Print progress bar
 		worker.Progress.Update[num] = worker.Progress.Bars.MakeBar(100, fmt.Sprintf("Part %d", num))
@@ -154,11 +145,21 @@ func (w *Worker) getRangeBody(part_num int, start int, end int) (io.ReadCloser, 
 	if err != nil {
 		return nil, 0, err
 	}
-	if resp.StatusCode != http.StatusPartialContent {
-		return nil, 0, errors.New("Accept-Ranges not supported.")
-	}
 	size, _ := strconv.Atoi(resp.Header["Content-Length"][0])
 	return resp.Body, size, err
+}
+
+func getSizeAndCheckRangeSupport(url string) (size int) {
+	res, _ := http.Head(url)
+	header := res.Header
+	accept_ranges, supported := header["Accept-Ranges"]
+	if !supported {
+		log.Fatal("Doesn't support `Accept-Ranges`.")
+	} else if supported && accept_ranges[0] != "bytes" {
+		log.Fatal("Support `Accept-Ranges`, but value is not `bytes`.")
+	}
+	size, _ = strconv.Atoi(header["Content-Length"][0]) // Get the content length.
+	return
 }
 
 func getFileName(download_url string) string {
