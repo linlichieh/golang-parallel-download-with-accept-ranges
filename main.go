@@ -40,7 +40,8 @@ func main() {
 
 	// Get header
 	total_size := getSizeAndCheckRangeSupport(download_url)
-	fmt.Println("Total size:", total_size)
+	fmt.Printf("Url: %s\n", download_url)
+	fmt.Printf("File size: %d bytes\n", total_size)
 
 	f, err := os.OpenFile(getFileName(download_url), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
