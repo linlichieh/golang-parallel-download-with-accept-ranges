@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -30,20 +31,27 @@ type Progress struct {
 }
 
 func main() {
-	// e.g. http://ipv4.download.thinkbroadband.com/20MB.zip
-	// e.g. http://ipv4.download.thinkbroadband.com/50MB.zip
-	if len(os.Args) == 1 {
-		log.Fatal("Please pass url via argument.")
-	}
-	download_url := os.Args[1]
+	var t = flag.Bool("t", false, "file name with datetime")
+	flag.Parse()
+
+	var download_url string
+	fmt.Print("Please enter a url: ")
+	fmt.Scanf("%s", &download_url)
 	worker_count := 5 // Goroutine number
 
-	// Get header
+	// Get header from the url
+	log.Printf("Url: %s\n", download_url)
 	total_size := getSizeAndCheckRangeSupport(download_url)
-	fmt.Printf("Url: %s\n", download_url)
-	fmt.Printf("File size: %d bytes\n", total_size)
+	log.Printf("File size: %d bytes\n", total_size)
 
-	f, err := os.OpenFile(getFileName(download_url), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
+	var file_path string
+	if *t {
+		file_path = filepath.Dir(os.Args[0]) + "/" + strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + getFileName(download_url)
+	} else {
+		file_path = filepath.Dir(os.Args[0]) + "/" + getFileName(download_url)
+	}
+	log.Printf("Local path: %s\n", file_path)
+	f, err := os.OpenFile(file_path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
 		log.Fatal("Failed to create file, error:", err)
 	}
@@ -81,7 +89,7 @@ func main() {
 	go worker.Progress.Bars.Listen()
 	worker.SyncWG.Wait()
 	time.Sleep(300 * time.Millisecond) // Wait for progress bar UI to be done.
-	fmt.Println("Done!")
+	log.Println("Done!")
 }
 
 func (w *Worker) writeRange(part_num int, start int, end int) {
@@ -136,6 +144,7 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 func (w *Worker) getRangeBody(part_num int, start int, end int) (io.ReadCloser, int, error) {
 	var client http.Client
 	req, err := http.NewRequest("GET", w.Url, nil)
+	// req.Header.Set("cookie", "")
 	if err != nil {
 		return nil, 0, err
 	}
@@ -151,7 +160,16 @@ func (w *Worker) getRangeBody(part_num int, start int, end int) (io.ReadCloser, 
 }
 
 func getSizeAndCheckRangeSupport(url string) (size int) {
-	res, _ := http.Head(url)
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", url, nil)
+	// req.Header.Set("cookie", "")
+	log.Printf("Request header: %s\n", req.Header)
+	res, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	log.Printf("Response header: %v\n", res.Header)
 	header := res.Header
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
