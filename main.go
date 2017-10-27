@@ -32,12 +32,12 @@ type Progress struct {
 
 func main() {
 	var t = flag.Bool("t", false, "file name with datetime")
+	var worker_count = flag.Int("c", 5, "connection count")
 	flag.Parse()
 
 	var download_url string
 	fmt.Print("Please enter a url: ")
 	fmt.Scanf("%s", &download_url)
-	worker_count := 5 // Goroutine number
 
 	// Get header from the url
 	log.Printf("Url: %s\n", download_url)
@@ -61,7 +61,7 @@ func main() {
 	var worker = Worker{
 		Url:       download_url,
 		File:      f,
-		Count:     worker_count,
+		Count:     *worker_count,
 		TotalSize: total_size,
 	}
 
@@ -70,7 +70,7 @@ func main() {
 	worker.Progress.Update = make(map[int]multibar.ProgressFunc)
 
 	var start, end int
-	var partial_size = int(total_size / worker_count)
+	var partial_size = int(total_size / *worker_count)
 
 	for num := 1; num <= worker.Count; num++ {
 		// Print progress bar

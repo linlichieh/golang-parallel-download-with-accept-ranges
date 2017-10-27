@@ -1,14 +1,23 @@
 # About
 
-This is a example to show you how to download a file in efficient way.
+This is an example to show you how to download a file in efficient way.
 
-If the url supports http header `Accept-Ranges`, it will divide it into 5 parts and download it concurrently.
+If a URL supports http header - `Accept-Ranges`, it will be divided into several parts and download it concurrently.
 
 # Run
 
-Download a file
+Download a file with 5 connections (default: 5)
 
-    go run main.go "http://ipv4.download.thinkbroadband.com/20MB.zip"
+    ./golang-parallel-download-with-accept-ranges
+
+File name with timestamp
+
+    ./golang-parallel-download-with-accept-ranges -t
+
+Specify the connection count
+
+    ./golang-parallel-download-with-accept-ranges -c=7
+
 
 ![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/run.gif)
 
