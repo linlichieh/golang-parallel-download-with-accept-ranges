@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -9,52 +10,51 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/sethgrid/multibar"
+	"github.com/cheggaaa/pb"
 )
 
 type Worker struct {
 	Url       string
 	File      *os.File
-	Count     int
+	Count     int64
 	SyncWG    sync.WaitGroup
-	TotalSize int
+	TotalSize int64
 	Progress
 }
 
 type Progress struct {
-	Bars   *multibar.BarContainer
-	Update map[int]multibar.ProgressFunc
+	Pool *pb.Pool
+	Bars []*pb.ProgressBar
 }
 
 func main() {
 	var t = flag.Bool("t", false, "file name with datetime")
-	var worker_count = flag.Int("c", 5, "connection count")
+	var worker_count = flag.Int64("c", 5, "connection count")
 	flag.Parse()
 
 	var download_url string
-	fmt.Print("Please enter a url: ")
+	fmt.Print("Please enter a URL: ")
 	fmt.Scanf("%s", &download_url)
 
 	// Get header from the url
-	log.Printf("Url: %s\n", download_url)
-	total_size := getSizeAndCheckRangeSupport(download_url)
-	log.Printf("File size: %d bytes\n", total_size)
+	log.Println("Url:", download_url)
+	file_size, err := getSizeAndCheckRangeSupport(download_url)
+	log.Printf("File size: %d bytes\n", file_size)
 
 	var file_path string
 	if *t {
-		file_path = filepath.Dir(os.Args[0]) + "/" + strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + getFileName(download_url)
+		file_path = filepath.Dir(os.Args[0]) + string(filepath.Separator) + strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + getFileName(download_url)
 	} else {
-		file_path = filepath.Dir(os.Args[0]) + "/" + getFileName(download_url)
+		file_path = filepath.Dir(os.Args[0]) + string(filepath.Separator) + getFileName(download_url)
 	}
 	log.Printf("Local path: %s\n", file_path)
 	f, err := os.OpenFile(file_path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
-	if err != nil {
-		log.Fatal("Failed to create file, error:", err)
-	}
+	handleError(err)
 	defer f.Close()
 
 	// New worker struct for downloading file
@@ -62,22 +62,21 @@ func main() {
 		Url:       download_url,
 		File:      f,
 		Count:     *worker_count,
-		TotalSize: total_size,
+		TotalSize: file_size,
 	}
 
-	// Progress bar
-	worker.Progress.Bars, _ = multibar.New()
-	worker.Progress.Update = make(map[int]multibar.ProgressFunc)
-
-	var start, end int
-	var partial_size = int(total_size / *worker_count)
-
-	for num := 1; num <= worker.Count; num++ {
-		// Print progress bar
-		worker.Progress.Update[num] = worker.Progress.Bars.MakeBar(100, fmt.Sprintf("Part %d", num))
+	var start, end int64
+	var partial_size = int64(file_size / *worker_count)
+	now := time.Now().UTC()
+	for num := int64(0); num < worker.Count; num++ {
+		// New sub progress bar
+		bar := pb.New(100).Prefix(fmt.Sprintf("Part %d ", num))
+		bar.ShowTimeLeft = false
+		bar.ShowPercent = false
+		worker.Progress.Bars = append(worker.Progress.Bars, bar)
 
 		if num == worker.Count {
-			end = total_size // last part
+			end = file_size // last part
 		} else {
 			end = start + partial_size
 		}
@@ -86,27 +85,31 @@ func main() {
 		go worker.writeRange(num, start, end-1)
 		start = end
 	}
-	go worker.Progress.Bars.Listen()
+	worker.Progress.Pool, err = pb.StartPool(worker.Progress.Bars...)
+	handleError(err)
 	worker.SyncWG.Wait()
-	time.Sleep(300 * time.Millisecond) // Wait for progress bar UI to be done.
+	worker.Progress.Pool.Stop()
+	log.Println("Elapsed time:", time.Since(now))
 	log.Println("Done!")
+	blockForWindows()
 }
 
-func (w *Worker) writeRange(part_num int, start int, end int) {
-	defer w.SyncWG.Done()
-	var written int
-	body, size, err := w.getRangeBody(part_num, start, end)
+func (w *Worker) writeRange(part_num int64, start int64, end int64) {
+	var written int64
+	body, size, err := w.getRangeBody(start, end)
 	if err != nil {
 		log.Fatalf("Part %d request error: %s\n", part_num, err.Error())
 	}
 	defer body.Close()
+	defer w.Bars[part_num].Finish()
+	defer w.SyncWG.Done()
 
-	percent_flag := map[int]bool{}
+	percent_flag := map[int64]bool{}
 	buf := make([]byte, 32*1024) // make a buffer to keep chunks that are read
 	for {
 		nr, er := body.Read(buf)
 		if nr > 0 {
-			nw, err := w.File.WriteAt(buf[0:nr], int64(start))
+			nw, err := w.File.WriteAt(buf[0:nr], start)
 			if err != nil {
 				log.Fatalf("Part %d occured error: %s.\n", part_num, err.Error())
 			}
@@ -114,17 +117,17 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 				log.Fatalf("Part %d occured error of short writiing.\n", part_num)
 			}
 
-			start = int(nw) + start
+			start = int64(nw) + start
 			if nw > 0 {
-				written += nw
+				written += int64(nw)
 			}
 
-			// Report progress and only report once time by every 1%.
-			p := int(float32(written) / float32(size) * 100)
+			// Set current percent to progress bar
+			p := int64(float32(written) / float32(size) * 100)
 			_, flagged := percent_flag[p]
 			if !flagged {
 				percent_flag[p] = true
-				w.Progress.Update[part_num](p)
+				w.Bars[int(part_num)].Set64(p) // Set current percent number
 			}
 		}
 		if er != nil {
@@ -132,56 +135,77 @@ func (w *Worker) writeRange(part_num int, start int, end int) {
 				if size == written {
 					// Downloading successfully
 				} else {
-					log.Fatalf("Part %d unfinished.\n", part_num)
+					handleError(errors.New(fmt.Sprintf("Part %d unfinished.\n", part_num)))
 				}
 				break
 			}
-			log.Fatalf("Part %d occured error: %s\n", part_num, er.Error())
+			handleError(errors.New(fmt.Sprintf("Part %d occured error: %s\n", part_num, er.Error())))
 		}
 	}
 }
 
-func (w *Worker) getRangeBody(part_num int, start int, end int) (io.ReadCloser, int, error) {
+func (w *Worker) getRangeBody(start int64, end int64) (io.ReadCloser, int64, error) {
 	var client http.Client
 	req, err := http.NewRequest("GET", w.Url, nil)
 	// req.Header.Set("cookie", "")
+	// log.Printf("Request header: %s\n", req.Header)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	// Set range header
-	req.Header.Add("Range", "bytes="+strconv.Itoa(start)+"-"+strconv.Itoa(end))
+	req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", start, end))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, err
 	}
-	size, _ := strconv.Atoi(resp.Header["Content-Length"][0])
+	size, err := strconv.ParseInt(resp.Header["Content-Length"][0], 10, 64)
 	return resp.Body, size, err
 }
 
-func getSizeAndCheckRangeSupport(url string) (size int) {
+func getSizeAndCheckRangeSupport(url string) (size int64, err error) {
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
 	// req.Header.Set("cookie", "")
-	log.Printf("Request header: %s\n", req.Header)
+	// log.Printf("Request header: %s\n", req.Header)
 	res, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
+		return
 	}
 	log.Printf("Response header: %v\n", res.Header)
 	header := res.Header
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
-		log.Fatal("Doesn't support `Accept-Ranges`.")
+		return 0, errors.New("Doesn't support `Accept-Ranges`.")
 	} else if supported && accept_ranges[0] != "bytes" {
-		log.Fatal("Support `Accept-Ranges`, but value is not `bytes`.")
+		return 0, errors.New("Support `Accept-Ranges`, but value is not `bytes`.")
 	}
-	size, _ = strconv.Atoi(header["Content-Length"][0]) // Get the content length.
+	size, err = strconv.ParseInt(header["Content-Length"][0], 10, 64)
 	return
 }
 
 func getFileName(download_url string) string {
-	url_struct, _ := url.Parse(download_url)
+	url_struct, err := url.Parse(download_url)
+	handleError(err)
 	return filepath.Base(url_struct.Path)
+}
+
+func handleError(err error) {
+	if err != nil {
+		log.Println("err:", err)
+		blockForWindows()
+		os.Exit(1)
+	}
+}
+
+func blockForWindows() { // Prevent windows from closing exe window.
+	if runtime.GOOS == "windows" {
+		for {
+			log.Println("[Press `Ctrl+C` key to exit...]")
+			time.Sleep(10 * time.Second)
+		}
+	}
 }

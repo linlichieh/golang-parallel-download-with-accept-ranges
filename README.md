@@ -23,8 +23,18 @@ Specify the connection count
 
 # Dependencies
 
-sethgrid/multibar - show multiple progress bar.
+[pb](github.com/cheggaaa/pb) - show multiple progress bar
 
-    go get github.com/sethgrid/multibar
+    go get github.com/cheggaaa/pb
+
+# Compile command
+
+windows (64 bits)
+
+    GOOS=windows GOARCH=amd64 go build -o download.exe
+
+# TODO
+
+* Support request header
 
 
