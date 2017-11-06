@@ -4,6 +4,8 @@ This is an example to show you how to download a file in efficient way.
 
 If a URL supports http header - `Accept-Ranges`, it will be divided into several parts and download it concurrently.
 
+![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/demo.gif)
+
 # Run
 
 Download a file with 5 connections (default: 5)
@@ -18,8 +20,6 @@ Specify the connection count
 
     ./golang-parallel-download-with-accept-ranges -c=7
 
-
-![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/run.gif)
 
 # Dependencies
 
