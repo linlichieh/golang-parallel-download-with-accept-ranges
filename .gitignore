@@ -1,3 +1,5 @@
 *.zip
 .DS_Store
 golang-parallel-download-with-accept-ranges
+download.command
+download.exe

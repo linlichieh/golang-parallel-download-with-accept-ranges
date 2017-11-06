@@ -44,6 +44,7 @@ func main() {
 	// Get header from the url
 	log.Println("Url:", download_url)
 	file_size, err := getSizeAndCheckRangeSupport(download_url)
+	handleError(err)
 	log.Printf("File size: %d bytes\n", file_size)
 
 	var file_path string
@@ -69,10 +70,13 @@ func main() {
 	var partial_size = int64(file_size / *worker_count)
 	now := time.Now().UTC()
 	for num := int64(0); num < worker.Count; num++ {
-		// New sub progress bar
-		bar := pb.New(100).Prefix(fmt.Sprintf("Part %d ", num))
-		bar.ShowTimeLeft = false
-		bar.ShowPercent = false
+		// New sub progress bar (give it 0 at first for new instance and assign real size later on.)
+		bar := pb.New(0).Prefix(fmt.Sprintf("Part %d ", num))
+		bar.ShowSpeed = true
+		bar.SetMaxWidth(100)
+		bar.SetUnits(pb.U_BYTES_DEC)
+		bar.SetRefreshRate(time.Second)
+		bar.ShowPercent = true
 		worker.Progress.Bars = append(worker.Progress.Bars, bar)
 
 		if num == worker.Count {
@@ -104,7 +108,9 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 	defer w.Bars[part_num].Finish()
 	defer w.SyncWG.Done()
 
-	percent_flag := map[int64]bool{}
+	w.Bars[part_num].Total = size // Assign total size to progress bar
+
+	// percent_flag := map[int64]bool{}
 	buf := make([]byte, 32*1024) // make a buffer to keep chunks that are read
 	for {
 		nr, er := body.Read(buf)
@@ -122,13 +128,16 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 				written += int64(nw)
 			}
 
+			// Set chunck to progress bar
+			w.Bars[int(part_num)].Set64(written) // Set current percent number
+
 			// Set current percent to progress bar
-			p := int64(float32(written) / float32(size) * 100)
-			_, flagged := percent_flag[p]
-			if !flagged {
-				percent_flag[p] = true
-				w.Bars[int(part_num)].Set64(p) // Set current percent number
-			}
+			// p := int64(float32(written) / float32(size) * 100)
+			// _, flagged := percent_flag[p]
+			// if !flagged {
+			//	percent_flag[p] = true
+			//	w.Bars[int(part_num)].Set64(p) // Set current percent number
+			// }
 		}
 		if er != nil {
 			if er.Error() == "EOF" {
@@ -179,7 +188,7 @@ func getSizeAndCheckRangeSupport(url string) (size int64, err error) {
 	header := res.Header
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
-		return 0, errors.New("Doesn't support `Accept-Ranges`.")
+		return 0, errors.New("Doesn't support header `Accept-Ranges`.")
 	} else if supported && accept_ranges[0] != "bytes" {
 		return 0, errors.New("Support `Accept-Ranges`, but value is not `bytes`.")
 	}

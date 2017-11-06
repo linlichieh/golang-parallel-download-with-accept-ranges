@@ -29,9 +29,17 @@ Specify the connection count
 
 # Compile command
 
-windows (64 bits)
+mac
+
+    GOOS=darwin GOARCH=amd64 go build -o download.command
+
+windows
 
     GOOS=windows GOARCH=amd64 go build -o download.exe
+
+# FIXME
+
+* File's body download on windows is different from one on mac. (e.g. mp4)
 
 # TODO
 
