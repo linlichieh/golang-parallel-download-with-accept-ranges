@@ -58,7 +58,7 @@ func main() {
 	handleError(err)
 	defer f.Close()
 
-	// New worker struct for downloading file
+	// New worker struct to download file
 	var worker = Worker{
 		Url:       download_url,
 		File:      f,
@@ -71,7 +71,7 @@ func main() {
 	now := time.Now().UTC()
 	for num := int64(0); num < worker.Count; num++ {
 		// New sub progress bar (give it 0 at first for new instance and assign real size later on.)
-		bar := pb.New(0).Prefix(fmt.Sprintf("Part %d ", num))
+		bar := pb.New(0).Prefix(fmt.Sprintf("Part %d  0%% ", num))
 		bar.ShowSpeed = true
 		bar.SetMaxWidth(100)
 		bar.SetUnits(pb.U_BYTES_DEC)
@@ -108,10 +108,14 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 	defer w.Bars[part_num].Finish()
 	defer w.SyncWG.Done()
 
-	w.Bars[part_num].Total = size // Assign total size to progress bar
+	// Assign total size to progress bar
+	w.Bars[part_num].Total = size
 
-	// percent_flag := map[int64]bool{}
-	buf := make([]byte, 32*1024) // make a buffer to keep chunks that are read
+	// New percentage flag
+	percent_flag := map[int64]bool{}
+
+	// make a buffer to keep chunks that are read
+	buf := make([]byte, 4*1024)
 	for {
 		nr, er := body.Read(buf)
 		if nr > 0 {
@@ -128,21 +132,21 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 				written += int64(nw)
 			}
 
-			// Set chunck to progress bar
-			w.Bars[int(part_num)].Set64(written) // Set current percent number
+			// Update written bytes on progress bar
+			w.Bars[int(part_num)].Set64(written)
 
-			// Set current percent to progress bar
-			// p := int64(float32(written) / float32(size) * 100)
-			// _, flagged := percent_flag[p]
-			// if !flagged {
-			//	percent_flag[p] = true
-			//	w.Bars[int(part_num)].Set64(p) // Set current percent number
-			// }
+			// Update current percentage on progress bars
+			p := int64(float32(written) / float32(size) * 100)
+			_, flagged := percent_flag[p]
+			if !flagged {
+				percent_flag[p] = true
+				w.Bars[int(part_num)].Prefix(fmt.Sprintf("Part %d  %d%% ", part_num, p))
+			}
 		}
 		if er != nil {
 			if er.Error() == "EOF" {
 				if size == written {
-					// Downloading successfully
+					// Download successfully
 				} else {
 					handleError(errors.New(fmt.Sprintf("Part %d unfinished.\n", part_num)))
 				}
