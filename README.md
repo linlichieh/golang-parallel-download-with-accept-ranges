@@ -21,7 +21,7 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
     ```
 1. Get dependencies
    ```bash
-   go get
+   go mod download
    ```
 1. Go Build
    ```bash
