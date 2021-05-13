@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,10 +13,10 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/artdarek/go-unzip"
 	"github.com/cheggaaa/pb"
 )
 
@@ -33,13 +34,10 @@ type Progress struct {
 	Bars []*pb.ProgressBar
 }
 
-func download(download_url string, file_name string) {
+func download(download_url string) {
 	var t = flag.Bool("t", false, "file name with datetime")
 	var worker_count = flag.Int64("c", 5, "connection count")
 	flag.Parse()
-
-	// fmt.Print("Please enter a URL: ")
-	// fmt.Scanf("%s", &download_url)
 
 	// Get header from the url
 	log.Println("Url:", download_url)
@@ -94,7 +92,7 @@ func download(download_url string, file_name string) {
 	worker.SyncWG.Wait()
 	worker.Progress.Pool.Stop()
 	// Close output file after all is done
-	// This ends EOF to the file (not working)
+	// This ends EOF to the file
 	worker.File.Close()
 	log.Println("Elapsed time:", time.Since(now))
 	log.Println("Done!")
@@ -226,12 +224,88 @@ func blockForWindows() { // Prevent windows from closing exe window.
 	}
 }
 
-func main() {
-	var download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
-	var file_name = "terraform.zip"
-	download(download_url, file_name)
-	uz := unzip.New(file_name, ".")
+// Source: https://stackoverflow.com/a/24792688/5285732
+func Unzip(src, dest string) error {
+	// src - zip file
+	// dest -  auto creates target directory and extracts the files to it
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := r.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
-	files := uz.Extract()
-	fmt.Println(files)
+	os.MkdirAll(dest, 0755)
+
+	// Closure to address file descriptors issue with all the deferred .Close() methods
+	extractAndWriteFile := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := rc.Close(); err != nil {
+				panic(err)
+			}
+		}()
+
+		path := filepath.Join(dest, f.Name)
+
+		// Check for ZipSlip (Directory traversal)
+		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", path)
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			os.MkdirAll(filepath.Dir(path), f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					panic(err)
+				}
+			}()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, f := range r.File {
+		err := extractAndWriteFile(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func main() {
+
+	// fmt.Print("Please enter a URL: ")
+	// fmt.Scanf("%s", &download_url)
+
+	var download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
+	var file_name = "terraform_0.15.3_linux_amd64.zip"
+	var dest_dir = "./terraform"
+	download(download_url)
+	log.Println("Unzipping", file_name, "to", dest_dir)
+	err := Unzip(file_name, dest_dir)
+	if err != nil {
+		log.Fatal(err.Error())
+		log.Fatal("Failed to unzip")
+	}
+	log.Println("Successfully unzipped", file_name, "to", dest_dir)
+
 }
