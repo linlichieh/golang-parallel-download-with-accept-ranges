@@ -5,3 +5,6 @@ download.command
 download.exe
 terraform*
 *.sig
+.*
+!*ignore*
+!.github
