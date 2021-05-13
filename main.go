@@ -1,3 +1,4 @@
+// Based on: https://github.com/jacklin293/golang-parallel-download-with-accept-ranges
 package main
 
 import (
