@@ -2,11 +2,9 @@
 
 Tested with `go1.16.3 linux/amd64`
 
-# About
+Download a zip file in efficient way, and unzip it.
 
-This is an example to show you how to download a file in efficient way.
-
-If a URL supports http header - `Accept-Ranges`, it will be divided into several parts and download it concurrently.
+If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests), it will be divided into several parts and download it concurrently.
 
 ![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/demo.gif)
 
