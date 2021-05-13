@@ -92,7 +92,7 @@ func download(download_url string) {
 		bar.ShowPercent = true
 		worker.Progress.Bars = append(worker.Progress.Bars, bar)
 
-		if num == worker.Count {
+		if num == worker.Count-1 {
 			end = file_size // last part
 		} else {
 			end = start + partial_size
