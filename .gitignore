@@ -4,3 +4,4 @@ golang-parallel-download-with-accept-ranges
 download.command
 download.exe
 terraform*
+*.sig

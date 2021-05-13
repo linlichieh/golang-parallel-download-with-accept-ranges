@@ -44,7 +44,7 @@ func download(download_url string) {
 	log.Println("Url:", download_url)
 	file_size, err := getSizeAndCheckRangeSupport(download_url)
 	handleError(err)
-	log.Printf("File size: %d bytes\n", file_size)
+	log.Printf("File size: %d MBytes\n", file_size/(1000000))
 
 	var file_path string
 	if *t {
@@ -53,8 +53,22 @@ func download(download_url string) {
 		file_path = filepath.Dir(os.Args[0]) + string(filepath.Separator) + getFileName(download_url)
 	}
 	log.Printf("Local path: %s\n", file_path)
+
+	if _, err := os.Stat(file_path); err == nil {
+		log.Printf("Zip file exists, removing ...")
+		os.Remove(file_path)
+		log.Printf("Successfully removed Zip file")
+	}
+
+	if err != nil {
+		handleError(err)
+	}
 	f, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0666)
-	handleError(err)
+	if err != nil {
+		f.Close()
+		handleError(err)
+	}
+
 	defer f.Close()
 
 	// New worker struct to download file
@@ -89,12 +103,13 @@ func download(download_url string) {
 		start = end
 	}
 	worker.Progress.Pool, err = pb.StartPool(worker.Progress.Bars...)
-	handleError(err)
+	if err != nil {
+		worker.File.Close()
+		handleError(err)
+	}
 	worker.SyncWG.Wait()
 	worker.Progress.Pool.Stop()
-	// Close output file after all is done
-	// This ends EOF to the file
-	worker.File.Close()
+	worker.File.Close() // final close
 	log.Println("Elapsed time:", time.Since(now))
 	log.Println("Done!")
 	blockForWindows()
@@ -104,6 +119,7 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 	var written int64
 	body, size, err := w.getRangeBody(start, end)
 	if err != nil {
+		w.File.Close()
 		log.Fatalf("Part %d request error: %s\n", part_num, err.Error())
 	}
 	defer body.Close()
@@ -117,7 +133,7 @@ func (w *Worker) writeRange(part_num int64, start int64, end int64) {
 	percent_flag := map[int64]bool{}
 
 	// make a buffer to keep chunks that are read
-	buf := make([]byte, 4*1024)
+	buf := make([]byte, 32*1024)
 	for {
 		nr, er := body.Read(buf)
 		if nr > 0 {
@@ -226,15 +242,17 @@ func blockForWindows() { // Prevent windows from closing exe window.
 }
 
 // Source: https://stackoverflow.com/a/24792688/5285732
-func Unzip(src, dest string) error {
+func Unzip(src string, dest string) error {
 	// src - zip file
 	// dest -  auto creates target directory and extracts the files to it
 	r, err := zip.OpenReader(src)
 	if err != nil {
+		log.Println("Failed to open source file", src)
 		return err
 	}
 	defer func() {
 		if err := r.Close(); err != nil {
+			log.Println("Failed to close file", src)
 			panic(err)
 		}
 	}()
@@ -245,10 +263,12 @@ func Unzip(src, dest string) error {
 	extractAndWriteFile := func(f *zip.File) error {
 		rc, err := f.Open()
 		if err != nil {
+			log.Println("Failed to open output file", f.Name)
 			return err
 		}
 		defer func() {
 			if err := rc.Close(); err != nil {
+				log.Println("Failed to close output file", f.Name)
 				panic(err)
 			}
 		}()
@@ -264,18 +284,22 @@ func Unzip(src, dest string) error {
 			os.MkdirAll(path, f.Mode())
 		} else {
 			os.MkdirAll(filepath.Dir(path), f.Mode())
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
+				log.Println("Failed to open", f.Name())
 				return err
 			}
 			defer func() {
 				if err := f.Close(); err != nil {
+					log.Println("Failed to close file", f.Name())
 					panic(err)
 				}
 			}()
 
 			_, err = io.Copy(f, rc)
 			if err != nil {
+				log.Println("Failed to copy file", f.Name())
+				log.Println(err)
 				return err
 			}
 		}
@@ -285,6 +309,7 @@ func Unzip(src, dest string) error {
 	for _, f := range r.File {
 		err := extractAndWriteFile(f)
 		if err != nil {
+			log.Println("Failed to extract and write file", f.Name)
 			return err
 		}
 	}
@@ -294,11 +319,15 @@ func Unzip(src, dest string) error {
 
 func main() {
 
+	var download_url string
 	// fmt.Print("Please enter a URL: ")
 	// fmt.Scanf("%s", &download_url)
 
-	var download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
-	var file_name = "terraform_0.15.3_linux_amd64.zip"
+	if download_url == "" {
+		download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
+	}
+
+	var file_name = getFileName(download_url)
 	current_dir, err := os.Getwd()
 	if err != nil {
 		return
@@ -311,9 +340,8 @@ func main() {
 
 	unzip_error := Unzip(file_path, dest_dir)
 	if unzip_error != nil {
-		log.Fatal(err.Error())
-		log.Fatal("Failed to unzip")
+		log.Fatal(unzip_error)
 	}
-	log.Println("Successfully unzipped", file_path, "to", dest_dir)
+	log.Println("Successfully unzipped", file_name, "to", dest_dir)
 
 }
