@@ -35,7 +35,7 @@ jobs:
             --cache-from="${{ matrix.GHCR_CACHED_TAG_PREFIX }}-${TARGET_BASE}" \
             -f "${{ matrix.DOCKERFILE_PATH }}" \
             --target "${TARGET_BASE}" \
-            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --build-arg BUILDKIT_INLINE_CACHE=1
           docker build . -t "cached-${TARGET_APP}" \
             --cache-from="${{ matrix.GHCR_CACHED_TAG_PREFIX }}-${TARGET_APP}" \
             -f "${{ matrix.DOCKERFILE_PATH }}" \
