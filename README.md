@@ -44,6 +44,21 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
   ./golang-parallel-download-with-accept-ranges -c=7
   ```
 
+## Docker
+
+1. Clone
+    ```bash
+    git clone https://github.com/unfor19/golang-parallel-download-with-accept-ranges.git && \
+    cd golang-parallel-download-with-accept-ranges
+    ```
+1. Build
+   ```bash
+   docker build -t ops .
+   ```
+1. Run **WIP**- need to fix `panic: runtime error: invalid memory address or nil pointer dereference, SIGSEGV`
+   ```bash
+   docker run --rm -t ops
+   ```
 
 ## Dependencies
 
