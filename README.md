@@ -1,5 +1,7 @@
 # golang-parallel-download-with-accept-ranges
 
+Tested with `go1.16.3 linux/amd64`
+
 # About
 
 This is an example to show you how to download a file in efficient way.
@@ -8,26 +10,52 @@ If a URL supports http header - `Accept-Ranges`, it will be divided into several
 
 ![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/demo.gif)
 
-# Run
+## Build
 
-Download a file with 5 connections (default: 5)
+1. Clone
+    ```bash
+    git clone https://github.com/unfor19/golang-parallel-download-with-accept-ranges.git && \
+    cd golang-parallel-download-with-accept-ranges
+    ```
+1. Get dependencies
+   ```bash
+   go get
+   ```
+1. Go Build
+   ```bash
+   go build
+   # output file: ./golang-parallel-download-with-accept-ranges
+   ```
 
-    ./golang-parallel-download-with-accept-ranges
+## Usage
 
-File name with timestamp
+- Download a file with 5 connections (default: 5)
+  ```bash
+  ./golang-parallel-download-with-accept-ranges
+  ```
+- File name with timestamp
+  ```bash
+  ./golang-parallel-download-with-accept-ranges -t
+  ```
+- Specify the connection count
+  ```bash
+  ./golang-parallel-download-with-accept-ranges -c=7
+  ```
 
-    ./golang-parallel-download-with-accept-ranges -t
 
-Specify the connection count
-
-    ./golang-parallel-download-with-accept-ranges -c=7
-
-
-# Dependencies
+## Dependencies
 
 [pb](github.com/cheggaaa/pb) - show multiple progress bar
 
-    go get github.com/cheggaaa/pb
+```bash
+go get github.com/cheggaaa/pb
+```
+
+## Older README.md leftovers
+
+<details>
+
+<summary>Expand/Collapse</summary>
 
 # Compile command
 
@@ -48,3 +76,4 @@ windows
 * Support request header
 
 
+</details>
