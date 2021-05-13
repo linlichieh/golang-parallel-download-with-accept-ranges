@@ -42,7 +42,7 @@ func download(download_url string) {
 
 	// Get header from the url
 	log.Println("Url:", download_url)
-	file_size, err := getSizeAndCheckRangeSupport(download_url)
+	file_size, err, ranges_supported := getSizeAndCheckRangeSupport(download_url)
 	handleError(err)
 	log.Printf("File size: %d Bytes\n", file_size)
 
@@ -70,6 +70,11 @@ func download(download_url string) {
 	}
 
 	defer f.Close()
+
+	if !ranges_supported {
+		log.Println("Target does NOT support http-ranges, using a single worker")
+		*worker_count = int64(1)
+	}
 
 	// New worker struct to download file
 	var worker = Worker{
@@ -195,7 +200,7 @@ func (w *Worker) getRangeBody(start int64, end int64) (io.ReadCloser, int64, err
 	return resp.Body, size, err
 }
 
-func getSizeAndCheckRangeSupport(url string) (size int64, err error) {
+func getSizeAndCheckRangeSupport(url string) (size int64, err error, ranges_supported bool) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -211,12 +216,16 @@ func getSizeAndCheckRangeSupport(url string) (size int64, err error) {
 	header := res.Header
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
-		return 0, errors.New("Doesn't support header `Accept-Ranges`.")
+		size, err = strconv.ParseInt(header["Content-Length"][0], 10, 64)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		return size, nil, false // , errors.New("Doesn't support header `Accept-Ranges`.")
 	} else if supported && accept_ranges[0] != "bytes" {
-		return 0, errors.New("Support `Accept-Ranges`, but value is not `bytes`.")
+		return 0, errors.New("Support `Accept-Ranges`, but value is not `bytes`."), false
 	}
 	size, err = strconv.ParseInt(header["Content-Length"][0], 10, 64)
-	return
+	return size, err, true
 }
 
 func getFileName(download_url string) string {
@@ -324,6 +333,7 @@ func main() {
 	// fmt.Scanf("%s", &download_url)
 
 	if download_url == "" {
+		// download_url = "https://github.com/helm/helm/archive/refs/tags/v3.5.4.zip"
 		download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
 	}
 
