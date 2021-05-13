@@ -8,6 +8,10 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
 
 ![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/demo.gif)
 
+## Requirements
+
+- [Go](https://golang.org/doc/install) v1.16.x
+
 ## Build
 
 1. Clone
