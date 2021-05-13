@@ -1,6 +1,6 @@
 # golang-parallel-download-with-accept-ranges
 
-Tested with `go1.16.3 linux/amd64`
+**WIP**: Need to fix multithreading
 
 Download a zip file in efficient way, and unzip it.
 
@@ -55,7 +55,7 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
    ```bash
    docker build -t ops .
    ```
-1. Run **WIP**- need to fix `panic: runtime error: invalid memory address or nil pointer dereference, SIGSEGV`
+2. Run
    ```bash
    docker run --rm -it ops
    ```
