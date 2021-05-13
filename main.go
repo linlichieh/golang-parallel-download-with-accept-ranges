@@ -299,14 +299,21 @@ func main() {
 
 	var download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
 	var file_name = "terraform_0.15.3_linux_amd64.zip"
-	var dest_dir = "./terraform"
-	download(download_url)
-	log.Println("Unzipping", file_name, "to", dest_dir)
-	err := Unzip(file_name, dest_dir)
+	current_dir, err := os.Getwd()
 	if err != nil {
+		return
+	}
+	var file_path = current_dir + string(filepath.Separator) + file_name
+	var dest_dir = current_dir + string(filepath.Separator) + "terraform"
+
+	download(download_url)
+	log.Println("Unzipping", file_path, "to", dest_dir)
+
+	unzip_error := Unzip(file_path, dest_dir)
+	if unzip_error != nil {
 		log.Fatal(err.Error())
 		log.Fatal("Failed to unzip")
 	}
-	log.Println("Successfully unzipped", file_name, "to", dest_dir)
+	log.Println("Successfully unzipped", file_path, "to", dest_dir)
 
 }
