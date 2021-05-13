@@ -44,7 +44,7 @@ func download(download_url string) {
 	log.Println("Url:", download_url)
 	file_size, err := getSizeAndCheckRangeSupport(download_url)
 	handleError(err)
-	log.Printf("File size: %d MBytes\n", file_size/(1000000))
+	log.Printf("File size: %d Bytes\n", file_size)
 
 	var file_path string
 	if *t {
@@ -97,6 +97,7 @@ func download(download_url string) {
 		} else {
 			end = start + partial_size
 		}
+		// log.Println(num, start, end) // debugging
 
 		worker.SyncWG.Add(1)
 		go worker.writeRange(num, start, end-1)
@@ -286,7 +287,6 @@ func Unzip(src string, dest string) error {
 			os.MkdirAll(filepath.Dir(path), f.Mode())
 			f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, f.Mode())
 			if err != nil {
-				log.Println("Failed to open", f.Name())
 				return err
 			}
 			defer func() {
