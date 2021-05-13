@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/artdarek/go-unzip"
 	"github.com/cheggaaa/pb"
 )
 
@@ -32,14 +33,13 @@ type Progress struct {
 	Bars []*pb.ProgressBar
 }
 
-func main() {
+func download(download_url string, file_name string) {
 	var t = flag.Bool("t", false, "file name with datetime")
 	var worker_count = flag.Int64("c", 5, "connection count")
 	flag.Parse()
 
-	var download_url string
-	fmt.Print("Please enter a URL: ")
-	fmt.Scanf("%s", &download_url)
+	// fmt.Print("Please enter a URL: ")
+	// fmt.Scanf("%s", &download_url)
 
 	// Get header from the url
 	log.Println("Url:", download_url)
@@ -54,7 +54,7 @@ func main() {
 		file_path = filepath.Dir(os.Args[0]) + string(filepath.Separator) + getFileName(download_url)
 	}
 	log.Printf("Local path: %s\n", file_path)
-	f, err := os.OpenFile(file_path, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
+	f, err := os.OpenFile(file_path, os.O_CREATE|os.O_RDWR, 0666)
 	handleError(err)
 	defer f.Close()
 
@@ -93,6 +93,9 @@ func main() {
 	handleError(err)
 	worker.SyncWG.Wait()
 	worker.Progress.Pool.Stop()
+	// Close output file after all is done
+	// This ends EOF to the file (not working)
+	worker.File.Close()
 	log.Println("Elapsed time:", time.Since(now))
 	log.Println("Done!")
 	blockForWindows()
@@ -188,7 +191,7 @@ func getSizeAndCheckRangeSupport(url string) (size int64, err error) {
 	if err != nil {
 		return
 	}
-	log.Printf("Response header: %v\n", res.Header)
+	// log.Printf("Response header: %v\n", res.Header)
 	header := res.Header
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
@@ -221,4 +224,14 @@ func blockForWindows() { // Prevent windows from closing exe window.
 			time.Sleep(10 * time.Second)
 		}
 	}
+}
+
+func main() {
+	var download_url = "https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip"
+	var file_name = "terraform.zip"
+	download(download_url, file_name)
+	uz := unzip.New(file_name, ".")
+
+	files := uz.Extract()
+	fmt.Println(files)
 }
