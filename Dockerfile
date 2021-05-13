@@ -8,9 +8,9 @@ ARG APP_GROUP="appgroup"
 # Target executable file:  /app/main
 
 
-# Dev
-FROM golang:${GO_VERSION}-alpine AS dev
-RUN apk add --update git
+# build
+FROM golang:${GO_VERSION}-alpine AS build
+RUN apk add --update git bash
 ARG APP_NAME
 ARG APP_PATH
 ENV APP_NAME="${APP_NAME}" \
@@ -20,18 +20,8 @@ WORKDIR "${APP_PATH}"
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . "${APP_PATH}"
-ENTRYPOINT ["sh"]
-
-# Pass ARGs to next stage
-ARG APP_NAME
-ARG APP_PATH
-
-# Build
-FROM dev as build
-ARG APP_NAME
-ARG APP_PATH
 RUN mkdir -p "/app/" && go build -o "/app/main"
-ENTRYPOINT [ "sh" ]
+ENTRYPOINT ["bash"]
 
 # App
 FROM alpine AS app
