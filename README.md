@@ -1,7 +1,5 @@
 # golang-parallel-download-with-accept-ranges
 
-**WIP**: Need to fix multithreading
-
 Download a zip file in efficient way, and unzip it.
 
 If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests), it will be divided into several parts and download it concurrently.
