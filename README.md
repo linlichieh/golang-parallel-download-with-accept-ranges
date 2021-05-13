@@ -57,7 +57,7 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
    ```
 1. Run **WIP**- need to fix `panic: runtime error: invalid memory address or nil pointer dereference, SIGSEGV`
    ```bash
-   docker run --rm -t ops
+   docker run --rm -it ops
    ```
 
 ## Dependencies
