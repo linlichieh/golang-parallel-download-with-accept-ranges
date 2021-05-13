@@ -54,6 +54,7 @@ jobs:
         run: |
           docker push "${{ matrix.GHCR_CACHED_TAG_PREFIX }}-${TARGET_BASE}"
           docker push "${{ matrix.GHCR_CACHED_TAG_PREFIX }}-${TARGET_APP}"
+
   dockerhub-push:
     needs: docker-build
     name: docker push
