@@ -100,8 +100,8 @@ jobs:
       matrix:
         include:
           - GOARCH: "amd64"
-          - GOARCH: "arm"
           - GOARCH: "386"
+          - GOARCH: "arm"
 
     steps:
       - uses: actions/checkout@master
