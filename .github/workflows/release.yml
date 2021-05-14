@@ -91,22 +91,57 @@ jobs:
           echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
           docker push "$DOCKERHUB_TAG"
 
-  release-binary:
+  release-linux-binaries:
     name: release binary
     runs-on: ubuntu-20.04
+    env:
+      GOOS: linux
     strategy:
       matrix:
         include:
-          - GOOS: "linux"
-            GOARCH: "amd64"
-          - GOOS: "windows"
-            GOARCH: "amd64"
-          - GOOS: "darwin"
+          - GOARCH: "amd64"
+          - GOARCH: "arm"
+          - GOARCH: "386"
+
     steps:
       - uses: actions/checkout@master
       - name: compile and release
         uses: ngs/go-release.action@v1.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: amd64
-          GOOS: linux
+          GOARCH: ${{ matrix.GOARCH }}
+
+  release-macos-binaries:
+    name: release binary
+    runs-on: ubuntu-20.04
+    env:
+      GOOS: darwin
+    strategy:
+      matrix:
+        include:
+          - GOARCH: "amd64"
+    steps:
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: ngs/go-release.action@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: ${{ matrix.GOARCH }}
+
+  release-windows-binaries:
+    name: release binary
+    runs-on: ubuntu-20.04
+    env:
+      GOOS: windows
+    strategy:
+      matrix:
+        include:
+          - GOARCH: "amd64"
+          - GOARCH: "386"
+    steps:
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: ngs/go-release.action@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: ${{ matrix.GOARCH }}
