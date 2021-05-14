@@ -8,3 +8,4 @@ terraform*
 .*
 !*ignore*
 !.github
+ops

@@ -2,10 +2,10 @@ ARG GO_VERSION=1.16.3
 ARG APP_VENDOR=
 ARG REPO_NAME=""
 ARG APP_NAME="ops"
-ARG APP_PATH="/go/src/internal/unfor19/golang-parallel-download-with-accept-ranges/ops"
+ARG APP_PATH="/go/src/internal/unfor19/ops"
 ARG APP_USER="appuser"
 ARG APP_GROUP="appgroup"
-# Target executable file:  /app/main
+# Target executable file:  /app/ops
 
 
 # build
@@ -20,7 +20,6 @@ WORKDIR "${APP_PATH}"
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . "${APP_PATH}"
-RUN mkdir -p "/app/" && go build -o "/app/main"
 RUN CGO_ENABLED=0 go install -ldflags '-extldflags "-static"' -tags timetzdata
 ENTRYPOINT ["bash"]
 
@@ -28,5 +27,5 @@ ENTRYPOINT ["bash"]
 FROM scratch AS app
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /go/bin/golang-parallel-download-with-accept-ranges /ops
+COPY --from=build /go/bin/ops /ops
 ENTRYPOINT [ "/ops" ]

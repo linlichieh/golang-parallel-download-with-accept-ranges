@@ -1,10 +1,11 @@
-# golang-parallel-download-with-accept-ranges
+# ops
 
-Download a zip file in efficient way, and unzip it.
+**Work In Progress**- An attempt to create an application that serves as a one-stop-shop for DevOps Engineers.
 
-If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests), it will be divided into several parts and download it concurrently.
+## Features
 
-![](https://github.com/jex-lin/golang-parallel-download-with-accept-ranges/blob/master/demo.gif)
+- Download a file using efficiently with [Accept-Ranges](https://developer.mozilla.org/en-US/docs/Web/HTTP/Range_requests)
+- Unzip file
 
 ## Requirements
 
@@ -14,8 +15,8 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
 
 1. Clone
     ```bash
-    git clone https://github.com/unfor19/golang-parallel-download-with-accept-ranges.git && \
-    cd golang-parallel-download-with-accept-ranges
+    git clone https://github.com/unfor19/ops.git && \
+    cd op
     ```
 1. Get dependencies
    ```bash
@@ -24,30 +25,30 @@ If a URL supports the http header [Accept-Ranges](https://developer.mozilla.org/
 1. Go Build
    ```bash
    go build
-   # output file: ./golang-parallel-download-with-accept-ranges
+   # output file: ./ops
    ```
 
 ## Usage
 
 - Download a file with 5 connections (default: 5)
   ```bash
-  ./golang-parallel-download-with-accept-ranges
+  ./ops
   ```
 - File name with timestamp
   ```bash
-  ./golang-parallel-download-with-accept-ranges -t
+  ./ops -t
   ```
 - Specify the connection count
   ```bash
-  ./golang-parallel-download-with-accept-ranges -c=7
+  ./ops -c=7
   ```
 
 ## Docker
 
 1. Clone
     ```bash
-    git clone https://github.com/unfor19/golang-parallel-download-with-accept-ranges.git && \
-    cd golang-parallel-download-with-accept-ranges
+    git clone https://github.com/unfor19/ops.git && \
+    cd ops
     ```
 1. Build
    ```bash

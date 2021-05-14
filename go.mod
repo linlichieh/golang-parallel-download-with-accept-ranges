@@ -1,4 +1,4 @@
-module golang-parallel-download-with-accept-ranges
+module ops
 
 go 1.16
 
