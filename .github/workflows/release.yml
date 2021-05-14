@@ -90,3 +90,23 @@ jobs:
         run: |
           echo '${{ secrets.DOCKER_PASSWORD }}' | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
           docker push "$DOCKERHUB_TAG"
+
+  release-binary:
+    name: release binary
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - GOOS: "linux"
+            GOARCH: "amd64"
+          - GOOS: "windows"
+            GOARCH: "amd64"
+          - GOOS: "darwin"
+    steps:
+      - uses: actions/checkout@master
+      - name: compile and release
+        uses: ngs/go-release.action@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GOARCH: amd64
+          GOOS: linux
