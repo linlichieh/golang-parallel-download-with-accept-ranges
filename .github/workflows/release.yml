@@ -102,7 +102,6 @@ jobs:
           - GOARCH: "amd64"
           - GOARCH: "386"
           - GOARCH: "arm"
-
     steps:
       - uses: actions/checkout@master
       - name: compile and release
