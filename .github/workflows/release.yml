@@ -92,7 +92,7 @@ jobs:
           docker push "$DOCKERHUB_TAG"
 
   release-linux-binaries:
-    name: release binary
+    name: linux
     runs-on: ubuntu-20.04
     env:
       GOOS: linux
@@ -111,7 +111,7 @@ jobs:
           GOARCH: ${{ matrix.GOARCH }}
 
   release-macos-binaries:
-    name: release binary
+    name: macos-darwin
     runs-on: ubuntu-20.04
     env:
       GOOS: darwin
@@ -128,7 +128,7 @@ jobs:
           GOARCH: ${{ matrix.GOARCH }}
 
   release-windows-binaries:
-    name: release binary
+    name: windows
     runs-on: ubuntu-20.04
     env:
       GOOS: windows
