@@ -30,18 +30,13 @@
 
 ## Usage
 
-- Download a file with 5 connections (default: 5)
-  ```bash
-  ./ops
-  ```
-- File name with timestamp
-  ```bash
-  ./ops -t
-  ```
-- Specify the connection count
-  ```bash
-  ./ops -c=7
-  ```
+Available commands
+
+<!-- available_commands_start -->
+
+Automatically injected by replacer
+
+<!-- available_commands_end -->
 
 ## Docker
 
