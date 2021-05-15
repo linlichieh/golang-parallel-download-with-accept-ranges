@@ -279,6 +279,9 @@ func getSizeAndCheckRangeSupport(url string) (size int64, ranges_supported bool,
 	}
 	// log.Printf("Response header: %v\n", res.Header)
 	header := res.Header
+	if len(header["Content-Length"]) == 0 {
+		log.Fatalln("Server does not support Content-Length")
+	}
 	accept_ranges, supported := header["Accept-Ranges"]
 	if !supported {
 		size, err = strconv.ParseInt(header["Content-Length"][0], 10, 64)
