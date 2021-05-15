@@ -15,7 +15,7 @@ limitations under the License.
 */
 package main
 
-import "github.com/unfor19/ops/cmd"
+import "ops/cmd"
 
 func main() {
 	cmd.Execute()
